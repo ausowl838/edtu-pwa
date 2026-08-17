@@ -114,9 +114,64 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent-lt); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PIN LOCK */
+  #pinOverlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #0a0f1a;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pin-box {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 40px 36px;
+    text-align: center; width: 320px;
+  }
+  .pin-box .pin-logo { font-size: 36px; margin-bottom: 10px; }
+  .pin-box h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .pin-box p  { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  .pin-dots { display: flex; justify-content: center; gap: 14px; margin-bottom: 28px; }
+  .pin-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--border); border: 2px solid var(--muted); transition: all .15s; }
+  .pin-dot.filled { background: var(--accent-lt); border-color: var(--accent-lt); }
+  .pin-dot.error  { background: #ef4444; border-color: #ef4444; }
+  .pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .pin-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 22px; font-weight: 700; border-radius: 10px; padding: 16px; cursor: pointer; transition: all .1s; }
+  .pin-btn:hover { background: rgba(29,111,164,.2); border-color: var(--accent); }
+  .pin-btn:active { transform: scale(.94); }
+  .pin-clear { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; margin-top: 6px; padding: 6px 14px; border-radius: 6px; }
+  .pin-clear:hover { color: var(--text); }
+  .pin-error-msg { font-size: 12px; color: #f87171; margin-top: 10px; min-height: 18px; }
 </style>
 </head>
 <body>
+
+
+<div id="pinOverlay">
+  <div class="pin-box">
+    <div class="pin-logo">🔐</div>
+    <h2>EDTU Admin</h2>
+    <p>Enter PIN to access</p>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-grid">
+      <button class="pin-btn" onclick="pinPress('1')">1</button>
+      <button class="pin-btn" onclick="pinPress('2')">2</button>
+      <button class="pin-btn" onclick="pinPress('3')">3</button>
+      <button class="pin-btn" onclick="pinPress('4')">4</button>
+      <button class="pin-btn" onclick="pinPress('5')">5</button>
+      <button class="pin-btn" onclick="pinPress('6')">6</button>
+      <button class="pin-btn" onclick="pinPress('7')">7</button>
+      <button class="pin-btn" onclick="pinPress('8')">8</button>
+      <button class="pin-btn" onclick="pinPress('9')">9</button>
+      <button class="pin-btn" onclick="pinPress('0')" style="grid-column:2;">0</button>
+    </div>
+    <button class="pin-clear" onclick="pinClear()">⌫ Clear</button>
+    <div class="pin-error-msg" id="pinErr"></div>
+  </div>
+</div>
 
 <header class="app-header">
   <div class="logo">
@@ -320,6 +375,49 @@ function showSS(cls, msg) {
 }
 
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+
+// ── PIN LOCK ──────────────────────────────────────────────────────
+const CORRECT_PIN = '1985';
+let pinEntry = '';
+
+function pinPress(digit) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += digit;
+  updateDots();
+  if (pinEntry.length === 4) {
+    setTimeout(checkPin, 150);
+  }
+}
+
+function updateDots(err) {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('d' + i);
+    d.className = 'pin-dot' + (i < pinEntry.length ? (err ? ' error' : ' filled') : '');
+  }
+}
+
+function checkPin() {
+  if (pinEntry === CORRECT_PIN) {
+    document.getElementById('pinOverlay').style.display = 'none';
+    sessionStorage.setItem('edtu_auth', '1');
+  } else {
+    updateDots(true);
+    document.getElementById('pinErr').textContent = 'Incorrect PIN. Try again.';
+    setTimeout(() => { pinEntry = ''; updateDots(); document.getElementById('pinErr').textContent = ''; }, 1200);
+  }
+}
+
+function pinClear() {
+  pinEntry = pinEntry.slice(0, -1);
+  updateDots();
+  document.getElementById('pinErr').textContent = '';
+}
+
+// Auto-unlock if already authenticated this session
+if (sessionStorage.getItem('edtu_auth') === '1') {
+  document.getElementById('pinOverlay').style.display = 'none';
+}
 
 // Register service worker
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
