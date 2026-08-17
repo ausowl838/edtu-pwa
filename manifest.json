@@ -1,0 +1,38 @@
+{
+  "name": "EDTU Bedside Display — NUH",
+  "short_name": "EDTU Display",
+  "description": "NUH Emergency Department Transitional Unit bedside patient display system",
+  "start_url": "/edtu-bedside/",
+  "scope": "/edtu-bedside/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0a0f1a",
+  "theme_color": "#1d6fa4",
+  "lang": "en-SG",
+  "icons": [
+    { "src": "icons/icon-72.png",   "sizes": "72x72",   "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-96.png",   "sizes": "96x96",   "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-128.png",  "sizes": "128x128", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-144.png",  "sizes": "144x144", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-152.png",  "sizes": "152x152", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-192.png",  "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-384.png",  "sizes": "384x384", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png",  "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Admin Panel",
+      "short_name": "Admin",
+      "description": "PSA patient data entry",
+      "url": "/edtu-bedside/admin.html",
+      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Bedside Display",
+      "short_name": "Bedside",
+      "description": "Patient bedside display",
+      "url": "/edtu-bedside/bedside.html",
+      "icons": [{ "src": "icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ]
+}

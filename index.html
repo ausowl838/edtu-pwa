@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDTU Display — NUH</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1d6fa4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EDTU Display">
+<link rel="apple-touch-icon" href="icons/icon-152.png">
+<style>
+  body { margin:0; background:#0a0f1a; display:flex; align-items:center; justify-content:center; height:100vh; font-family:'Segoe UI',sans-serif; }
+  .splash { text-align:center; color:#e8edf5; }
+  .title { font-size:28px; font-weight:800; margin-bottom:8px; }
+  .title span { color:#2389cc; }
+  .sub { color:#7a8fa8; font-size:14px; margin-bottom:32px; }
+  .btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  a.btn {
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:20px 28px; border-radius:12px; text-decoration:none;
+    font-weight:700; font-size:14px; transition:all .15s;
+    border:2px solid;
+  }
+  a.btn .icon { font-size:32px; }
+  .btn-admin   { background:rgba(29,111,164,.15); color:#60b4e8; border-color:#1d6fa4; }
+  .btn-admin:hover { background:rgba(29,111,164,.3); }
+  .btn-bedside { background:rgba(26,127,90,.1);  color:#34d399; border-color:#1a7f5a; }
+  .btn-bedside:hover { background:rgba(26,127,90,.25); }
+  .nuh { font-size:11px; color:#7a8fa8; margin-top:28px; letter-spacing:.06em; }
+</style>
+</head>
+<body>
+<div class="splash">
+  <div class="title"><span>EDTU</span> Bedside Display</div>
+  <div class="sub">National University Hospital &nbsp;·&nbsp; Emergency Department</div>
+  <div class="btns">
+    <a href="admin.html" class="btn btn-admin">
+      <span class="icon">📋</span>Admin Panel<span style="font-size:11px;font-weight:400;color:#7a8fa8;">PSA Workstation</span>
+    </a>
+    <a href="bedside.html" class="btn btn-bedside">
+      <span class="icon">🖥</span>Bedside Display<span style="font-size:11px;font-weight:400;color:#7a8fa8;">Patient Tablet</span>
+    </a>
+  </div>
+  <div class="nuh">NUH · EDTU · v2.0</div>
+</div>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EDTU Admin — NUH</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1d6fa4">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EDTU Admin">
+<link rel="apple-touch-icon" href="icons/icon-152.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg:        #0a0f1a;
+    --panel:     #111827;
+    --border:    #1e2d45;
+    --accent:    #1d6fa4;
+    --accent-lt: #2389cc;
+    --text:      #e8edf5;
+    --muted:     #7a8fa8;
+    --font-ui:   'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: var(--font-ui); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+  /* HEADER */
+  .app-header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; }
+  .logo span { color: var(--accent-lt); }
+  .badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: .06em; }
+  .badge-nuh   { background: var(--accent); color: #fff; }
+  .badge-admin { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+  .conn-bar { font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 600; }
+  .conn-bar.connecting { background: rgba(180,83,9,.2); color: #fbbf24; border: 1px solid rgba(180,83,9,.4); }
+  .conn-bar.live  { background: rgba(26,127,90,.2);  color: #34d399; border: 1px solid rgba(52,211,153,.3); }
+  .conn-bar.error { background: rgba(153,27,27,.2);  color: #f87171; border: 1px solid rgba(248,113,113,.3); }
+
+  /* LAYOUT */
+  .admin-layout { display: grid; grid-template-columns: 280px 1fr; flex: 1; overflow: hidden; }
+
+  /* SIDEBAR */
+  .admin-sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-header { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-header h3 { font-size: 11px; font-weight: 700; letter-spacing: .07em; color: var(--muted); text-transform: uppercase; }
+  .bed-list { flex: 1; overflow-y: auto; padding: 6px; }
+  .bed-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px; cursor: pointer; border: 1px solid transparent; margin-bottom: 2px; transition: background .1s; }
+  .bed-item:hover { background: rgba(29,111,164,.12); }
+  .bed-item.selected { background: rgba(29,111,164,.22); border-color: var(--accent); }
+  .bed-num { width: 32px; height: 32px; background: var(--bg); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--accent-lt); flex-shrink: 0; border: 1px solid var(--border); }
+  .bed-item.occupied .bed-num { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .bed-info { flex: 1; min-width: 0; }
+  .bed-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bed-sub  { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alert-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; display: none; }
+  .bed-item.has-alerts .alert-dot { display: block; }
+
+  /* EDIT PANEL */
+  .edit-panel { padding: 20px 24px; overflow-y: auto; }
+  .edit-panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .bed-tag { font-size: 11px; font-weight: 600; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 4px; }
+  .form-section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .form-section h4 { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .form-row { margin-bottom: 11px; }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-row label { font-size: 11px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
+  .form-row input, .form-row select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--font-ui); font-size: 14px;
+    padding: 8px 10px; border-radius: 6px; transition: border-color .15s;
+  }
+  .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent-lt); }
+  .form-row select option { background: #1a2535; }
+  .col-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ALERT TOGGLES */
+  .alert-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .alert-toggle { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg); border: 2px solid var(--border); border-radius: 8px; cursor: pointer; transition: all .15s; user-select: none; }
+  .alert-toggle:hover { border-color: var(--accent); }
+  .alert-toggle.on { border-color: #f97316; background: rgba(249,115,22,.08); }
+  .alert-toggle.on.danger-alert { border-color: #ef4444; background: rgba(239,68,68,.08); }
+  .alert-icon { font-size: 16px; }
+  .alert-label { font-size: 12px; font-weight: 600; flex: 1; }
+  .toggle-pip { width: 16px; height: 16px; border-radius: 50%; background: var(--border); transition: all .15s; flex-shrink: 0; }
+  .alert-toggle.on .toggle-pip { background: #f97316; }
+  .alert-toggle.on.danger-alert .toggle-pip { background: #ef4444; }
+
+  /* ACTIONS */
+  .form-actions { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+  .btn { padding: 10px 20px; border-radius: 7px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-lt); }
+  .btn-danger { background: rgba(127,29,29,.3); color: #fca5a5; border: 1px solid rgba(220,38,38,.3); }
+  .btn-danger:hover { background: rgba(127,29,29,.5); }
+  .btn-ghost { background: var(--panel); color: var(--muted); border: 1px solid var(--border); font-size: 12px; padding: 4px 10px; }
+  .save-status { font-size: 12px; padding: 7px 12px; border-radius: 6px; display: none; align-items: center; margin-left: auto; }
+  .save-status.ok  { display: flex; background: rgba(26,127,90,.2); color: #34d399; border: 1px solid rgba(52,211,153,.25); }
+  .save-status.err { display: flex; background: rgba(127,29,29,.2); color: #f87171; border: 1px solid rgba(248,113,113,.25); }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 75%; color: var(--muted); gap: 10px; }
+  .empty-state .icon { font-size: 36px; opacity: .3; }
+  .empty-state p { font-size: 13px; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent-lt); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo">
+    <span>EDTU</span> Admin
+    <span class="badge badge-nuh">NUH</span>
+    <span class="badge badge-admin">ADMIN</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="connBar" class="conn-bar connecting"><span class="spinner"></span> Connecting…</span>
+    <button class="btn-ghost btn" onclick="loadFromSupabase()">↻ Refresh</button>
+    <a href="bedside.html" style="text-decoration:none;">
+      <button class="btn-ghost btn">🖥 Bedside View</button>
+    </a>
+  </div>
+</header>
+
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="sidebar-header">
+      <h3>All Beds (16)</h3>
+    </div>
+    <div class="bed-list" id="bedList"></div>
+  </aside>
+  <main class="edit-panel" id="editPanel">
+    <div class="empty-state">
+      <div class="icon">🛏</div>
+      <p>Select a bed to edit patient information</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const SUPA_URL = 'https://rhkvarnydxlwaiuznvrz.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoa3Zhcm55ZHhsd2FpdXpudnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MTcxNDEsImV4cCI6MjA5Nzk5MzE0MX0.5yQvalFR7ALsVOuTS3jxUo6AU2xxuk2M6pu15Hd4I24';
+const BED_COUNT = 16;
+
+const ALERT_DEFS = [
+  { key:'alert_nbm',       label:'Nil by Mouth',        icon:'🚫', danger:true  },
+  { key:'alert_fall',      label:'Fall Risk',           icon:'⚠️', danger:true  },
+  { key:'alert_allergy',   label:'Known Allergy',       icon:'💊', danger:true  },
+  { key:'alert_o2',        label:'O₂ Dependent',        icon:'💨', danger:false },
+  { key:'alert_contact',   label:'Contact Precautions', icon:'🧤', danger:false },
+  { key:'alert_ccm',       label:'Telemetry',                 icon:'🏥', danger:true  },
+  { key:'alert_strict_io', label:'Strict I/O',          icon:'📊', danger:false },
+  { key:'alert_diet_nd',   label:'Diet (Non-Dairy)',    icon:'🥛', danger:false },
+];
+
+let patients = {}, selectedBed = null, sb = null;
+
+function blank(bed) {
+  return { bed_number:bed, full_name:'', gender:'', doctor:'', apn:'',
+    alert_nbm:false, alert_fall:false, alert_allergy:false, alert_o2:false,
+    alert_contact:false, alert_ccm:false, alert_strict_io:false, alert_diet_nd:false,
+    updated_at:null };
+}
+
+function initBeds() {
+  for (let i=1; i<=BED_COUNT; i++) {
+    const k = 'BED '+String(i).padStart(2,'0');
+    patients[k] = patients[k] || blank(k);
+  }
+}
+
+async function initSupabase() {
+  try {
+    sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    await loadFromSupabase();
+    sb.channel('edtu-admin')
+      .on('postgres_changes',{event:'*',schema:'public',table:'patients'}, p => {
+        const r = p.new || p.old;
+        if (r?.bed_number) patients[r.bed_number] = r;
+        renderBedList();
+      }).subscribe();
+    setConn('live','🟢 LIVE');
+  } catch(e) { setConn('error','⚠ Error'); }
+}
+
+async function loadFromSupabase() {
+  const { data } = await sb.from('patients').select('*');
+  (data||[]).forEach(r => patients[r.bed_number] = r);
+  renderBedList();
+  if (selectedBed) renderEditForm(patients[selectedBed]);
+}
+
+function setConn(cls,txt) {
+  const el = document.getElementById('connBar');
+  el.className='conn-bar '+cls; el.innerHTML=txt;
+}
+
+function renderBedList() {
+  const list = document.getElementById('bedList');
+  list.innerHTML = '';
+  Object.values(patients).forEach(p => {
+    const occupied = !!p.full_name;
+    const hasAlerts = ALERT_DEFS.some(a=>p[a.key]);
+    const div = document.createElement('div');
+    div.className = ['bed-item',occupied&&'occupied',hasAlerts&&'has-alerts',selectedBed===p.bed_number&&'selected'].filter(Boolean).join(' ');
+    div.innerHTML = `
+      <div class="bed-num">${p.bed_number.replace('BED ','')}</div>
+      <div class="bed-info">
+        <div class="bed-name">${p.full_name||'<span style="color:var(--muted);font-style:italic;font-weight:400;">Unoccupied</span>'}</div>
+        <div class="bed-sub">${p.doctor?'Dr '+p.doctor:p.bed_number}</div>
+      </div>
+      <div class="alert-dot"></div>`;
+    div.onclick = () => { selectedBed=p.bed_number; renderBedList(); renderEditForm(patients[p.bed_number]); };
+    list.appendChild(div);
+  });
+}
+
+function renderEditForm(p) {
+  document.getElementById('editPanel').innerHTML = `
+    <h2>Patient Record <span class="bed-tag">${p.bed_number}</span></h2>
+    <div class="form-section">
+      <h4>Patient Information</h4>
+      <div class="form-row">
+        <label>Full Name (as per IC)</label>
+        <input id="f_name" type="text" value="${esc(p.full_name)}" placeholder="e.g. TAN AH KOW"
+          style="text-transform:uppercase;font-weight:600;font-size:15px;"
+          oninput="this.value=this.value.toUpperCase()" />
+      </div>
+      <div class="form-row">
+        <label>Gender</label>
+        <select id="f_gender">
+          <option value="">— Select —</option>
+          <option value="Male"   ${p.gender==='Male'?'selected':''}>Male</option>
+          <option value="Female" ${p.gender==='Female'?'selected':''}>Female</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-section">
+      <h4>Clinical Assignment</h4>
+      <div class="col-grid-2">
+        <div class="form-row">
+          <label>Attending Doctor</label>
+          <input id="f_doctor" type="text" value="${esc(p.doctor)}" placeholder="e.g. LIM BOON KENG"
+            oninput="this.value=this.value.toUpperCase()" />
+        </div>
+        <div class="form-row">
+          <label>Attending APN</label>
+          <input id="f_apn" type="text" value="${esc(p.apn||'')}" placeholder="e.g. TAN HUI LING"
+            oninput="this.value=this.value.toUpperCase()" />
+        </div>
+      </div>
+    </div>
+    <div class="form-section">
+      <h4>Alerts &amp; Precautions</h4>
+      <div class="alert-grid">
+        ${ALERT_DEFS.map(a=>`
+          <div class="alert-toggle ${p[a.key]?'on':''}${p[a.key]&&a.danger?' danger-alert':''}"
+               id="tog_${a.key}" onclick="togAlert('${a.key}',${a.danger})">
+            <span class="alert-icon">${a.icon}</span>
+            <span class="alert-label">${a.label}</span>
+            <div class="toggle-pip"></div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="saveBed()">💾 Save</button>
+      <button class="btn btn-danger"  onclick="clearBed()">🗑 Discharge / Clear</button>
+      <div id="ss" class="save-status"></div>
+    </div>`;
+}
+
+function togAlert(key, danger) {
+  const el = document.getElementById('tog_'+key);
+  const on = el.classList.toggle('on');
+  el.classList.toggle('danger-alert', on && danger);
+}
+
+async function saveBed() {
+  if (!selectedBed) return;
+  const updated = {
+    ...patients[selectedBed],
+    full_name: document.getElementById('f_name').value.toUpperCase().trim(),
+    gender:    document.getElementById('f_gender').value,
+    doctor:    document.getElementById('f_doctor').value.toUpperCase().trim(),
+    apn:       document.getElementById('f_apn').value.toUpperCase().trim(),
+    updated_at: new Date().toISOString(),
+  };
+  ALERT_DEFS.forEach(a => { updated[a.key] = document.getElementById('tog_'+a.key).classList.contains('on'); });
+  patients[selectedBed] = updated;
+  const { error } = await sb.from('patients').upsert(updated, { onConflict:'bed_number' });
+  showSS(error?'err':'ok', error?'✗ '+error.message:'✓ Saved');
+  renderBedList();
+}
+
+async function clearBed() {
+  if (!selectedBed || !confirm(`Discharge & clear ${selectedBed}?`)) return;
+  const b = { ...blank(selectedBed), updated_at: new Date().toISOString() };
+  patients[selectedBed] = b;
+  await sb.from('patients').upsert(b, { onConflict:'bed_number' });
+  renderBedList();
+  renderEditForm(b);
+  showSS('ok','✓ Bed cleared');
+}
+
+function showSS(cls, msg) {
+  const el = document.getElementById('ss');
+  el.textContent=msg; el.className='save-status '+cls;
+  setTimeout(()=>el.className='save-status', 3000);
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Register service worker
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+initBeds();
+initSupabase();
+</script>
+</body>
+</html>

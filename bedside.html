@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>EDTU Bedside — NUH</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0f1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="EDTU Bedside">
+<link rel="apple-touch-icon" href="icons/icon-152.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg:        #0a0f1a;
+    --panel:     #111827;
+    --border:    #1e2d45;
+    --accent:    #1d6fa4;
+    --accent-lt: #2389cc;
+    --text:      #e8edf5;
+    --muted:     #7a8fa8;
+    --font-ui:   'Segoe UI', system-ui, sans-serif;
+    --font-data: 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: var(--font-ui); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+
+  /* TOP BAR */
+  .top-bar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .top-bar .logo { font-size: 13px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .top-bar .logo span { color: var(--accent-lt); }
+  .top-bar .right { display: flex; align-items: center; gap: 10px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 0 rgba(34,197,94,.4); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.4)} 70%{box-shadow:0 0 0 7px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+  .live-label { font-size: 11px; color: #22c55e; font-weight: 700; }
+  .bed-selector { display: flex; align-items: center; gap: 8px; }
+  .bed-selector label { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .06em; }
+  .bed-selector select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 13px; font-weight: 700; padding: 5px 8px; border-radius: 5px; cursor: pointer; }
+  .date-small { font-size: 11px; color: var(--muted); }
+  .admin-link { font-size: 11px; color: var(--muted); text-decoration: none; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; }
+  .admin-link:hover { color: var(--text); border-color: var(--muted); }
+
+  /* MAIN CARD — fills remaining height */
+  .card-wrap { flex: 1; padding: 12px 16px 16px; display: flex; flex-direction: column; overflow: hidden; }
+
+  .patient-card {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER BAND */
+  .card-header {
+    background: linear-gradient(135deg, #0c1e33 0%, #0f2d4a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 28px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    flex-shrink: 0;
+  }
+  .card-bed-num {
+    font-size: 13px; font-weight: 700; letter-spacing: .12em;
+    color: var(--accent-lt); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .card-salutation {
+    font-size: 20px; font-weight: 600; color: var(--muted); margin-bottom: 2px;
+  }
+  .card-name {
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 800; line-height: 1.05; letter-spacing: -.01em;
+  }
+  .card-date {
+    text-align: right; flex-shrink: 0;
+    font-size: clamp(14px, 1.8vw, 20px);
+    font-weight: 600; color: var(--muted); line-height: 1.5;
+  }
+
+  /* ALERTS BAND */
+  .alerts-band {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .alert-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-radius: 9px;
+    font-size: clamp(14px, 1.6vw, 18px);
+    font-weight: 800; border: 2px solid;
+    animation: badge-in .2s ease;
+  }
+  @keyframes badge-in { from{transform:scale(.9);opacity:0} to{transform:scale(1);opacity:1} }
+  .alert-badge .ab-icon { font-size: clamp(16px, 2vw, 22px); }
+  .ab.nil-mouth    { background:#fff7ed; color:#9a3412; border-color:#f97316; }
+  .ab.fall-risk    { background:#fefce8; color:#854d0e; border-color:#eab308; }
+  .ab.allergy      { background:#fdf4ff; color:#7e22ce; border-color:#a855f7; }
+  .ab.oxygen       { background:#eff6ff; color:#1e40af; border-color:#3b82f6; }
+  .ab.contact-prec { background:#f0fdf4; color:#166534; border-color:#22c55e; }
+  .ab.ccm          { background:#fff1f2; color:#9f1239; border-color:#f43f5e; }
+  .ab.strict-io    { background:#f0f9ff; color:#075985; border-color:#0ea5e9; }
+  .ab.diet-nd      { background:#faf5ff; color:#6b21a8; border-color:#c084fc; }
+
+  /* INFO GRID */
+  .card-body {
+    flex: 1; padding: 16px 28px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    overflow: hidden;
+  }
+  .info-block {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .ib-label { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .ib-value { font-size: clamp(18px, 2.2vw, 26px); font-weight: 700; line-height: 1.3; }
+
+  /* NO PATIENT */
+  .no-patient { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); gap: 12px; }
+  .no-patient .icon { font-size: 56px; opacity: .2; }
+  .no-patient p { font-size: 18px; }
+
+  ::-webkit-scrollbar { display: none; }
+  .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent-lt); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="logo"><span>EDTU</span> Bedside Display &nbsp;·&nbsp; NUH</div>
+  <div class="right">
+    <div class="bed-selector">
+      <label>BED</label>
+      <select id="bedSel" onchange="onBedChange()"></select>
+    </div>
+    <div class="live-dot"></div>
+    <span class="live-label">LIVE</span>
+    <a href="admin.html" class="admin-link">⚙ Admin</a>
+  </div>
+</div>
+
+<div class="card-wrap">
+  <div id="patientCard" class="patient-card">
+    <div class="no-patient">
+      <div class="icon">🛏</div>
+      <p>Connecting…</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPA_URL = 'https://rhkvarnydxlwaiuznvrz.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJoa3Zhcm55ZHhsd2FpdXpudnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MTcxNDEsImV4cCI6MjA5Nzk5MzE0MX0.5yQvalFR7ALsVOuTS3jxUo6AU2xxuk2M6pu15Hd4I24';
+const BED_COUNT = 16;
+
+const ALERT_DEFS = [
+  { key:'alert_nbm',       label:'Nil by Mouth',        icon:'🚫', cls:'nil-mouth'    },
+  { key:'alert_fall',      label:'Fall Risk',           icon:'⚠️', cls:'fall-risk'    },
+  { key:'alert_allergy',   label:'Known Allergy',       icon:'💊', cls:'allergy'      },
+  { key:'alert_o2',        label:'O₂ Dependent',        icon:'💨', cls:'oxygen'       },
+  { key:'alert_contact',   label:'Contact Precautions', icon:'🧤', cls:'contact-prec' },
+  { key:'alert_ccm',       label:'Telemetry',                 icon:'🏥', cls:'ccm'          },
+  { key:'alert_strict_io', label:'Strict I/O',          icon:'📊', cls:'strict-io'    },
+  { key:'alert_diet_nd',   label:'Diet (Non-Dairy)',    icon:'🥛', cls:'diet-nd'      },
+];
+
+let patients = {}, sb = null;
+let currentBed = null;
+
+// Read bed from URL param ?bed=BED+12
+function getBedFromURL() {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('bed') || null;
+}
+
+function initBeds() {
+  for (let i=1; i<=BED_COUNT; i++) {
+    const k = 'BED '+String(i).padStart(2,'0');
+    patients[k] = { bed_number:k, full_name:'', gender:'', doctor:'', apn:'',
+      alert_nbm:false, alert_fall:false, alert_allergy:false, alert_o2:false,
+      alert_contact:false, alert_ccm:false, alert_strict_io:false, alert_diet_nd:false };
+  }
+}
+
+function populateSelect() {
+  const sel = document.getElementById('bedSel');
+  sel.innerHTML = Object.keys(patients).map(k =>
+    `<option value="${k}" ${k===currentBed?'selected':''}>${k}</option>`
+  ).join('');
+}
+
+function onBedChange() {
+  currentBed = document.getElementById('bedSel').value;
+  // Update URL so refreshing keeps the same bed
+  const url = new URL(window.location);
+  url.searchParams.set('bed', currentBed);
+  window.history.replaceState({}, '', url);
+  render();
+}
+
+function getSalutation(gender) {
+  if (gender === 'Male')   return 'MR.';
+  if (gender === 'Female') return 'MS/MDM';
+  return '';
+}
+
+function render() {
+  const p = patients[currentBed];
+  const card = document.getElementById('patientCard');
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-SG', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  if (!p || !p.full_name) {
+    card.innerHTML = `
+      <div class="no-patient">
+        <div class="icon">🛏</div>
+        <p>${currentBed} — No patient currently assigned</p>
+      </div>`;
+    return;
+  }
+
+  const alerts = ALERT_DEFS.filter(a => p[a.key]);
+  const sal = getSalutation(p.gender);
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div>
+        <div class="card-bed-num">📍 ${p.bed_number}</div>
+        ${sal ? `<div class="card-salutation">${sal}</div>` : ''}
+        <div class="card-name">${esc(p.full_name)}</div>
+      </div>
+      <div class="card-date">${dateStr}</div>
+    </div>
+    ${alerts.length ? `
+      <div class="alerts-band">
+        ${alerts.map(a=>`
+          <div class="alert-badge ab ${a.cls}">
+            <span class="ab-icon">${a.icon}</span>${a.label}
+          </div>`).join('')}
+      </div>` : ''}
+    <div class="card-body">
+      <div class="info-block">
+        <div class="ib-label">Attending Doctor</div>
+        <div class="ib-value">Dr ${esc(p.doctor)||'—'}</div>
+      </div>
+      <div class="info-block">
+        <div class="ib-label">Attending APN</div>
+        <div class="ib-value">${esc(p.apn)||'—'}</div>
+      </div>
+    </div>`;
+}
+
+async function init() {
+  initBeds();
+
+  // Determine starting bed
+  const urlBed = getBedFromURL();
+  currentBed = urlBed && patients[urlBed] ? urlBed : 'BED 01';
+  populateSelect();
+
+  try {
+    sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+    const { data } = await sb.from('patients').select('*');
+    (data||[]).forEach(r => patients[r.bed_number] = r);
+    populateSelect();
+    render();
+
+    // Real-time updates
+    sb.channel('edtu-bedside')
+      .on('postgres_changes',{event:'*',schema:'public',table:'patients'}, payload => {
+        const r = payload.new || payload.old;
+        if (r?.bed_number) patients[r.bed_number] = r;
+        if (r?.bed_number === currentBed) render();
+      }).subscribe();
+
+  } catch(e) {
+    console.error(e);
+    render();
+  }
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Register service worker
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+
+// Clock refresh every 60s to keep date current
+setInterval(render, 60000);
+
+init();
+</script>
+</body>
+</html>
